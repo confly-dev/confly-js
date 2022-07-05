@@ -1,15 +1,12 @@
 require("dotenv").config();
 const fs = require("fs");
-const getEndpoint = require("./endpoint");
+const chalk = require("chalk");
+const { getCachePath, getEndpoint } = require("./util");
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
-const chalk = require("chalk");
-const { getConfigPath, getCachePath } = require("./integrationPaths");
 
 async function getConfig(instance, token) {
   return new Promise(async (resolve, reject) => {
-    const configPath = getConfigPath();
-
     if (!token) {
       token = process.env.confly_token;
       if (!token) reject("No confly token provided");
@@ -19,9 +16,9 @@ async function getConfig(instance, token) {
       instance = process.env.confly_instance;
       if (!instance) reject("No confly instance id provided");
     }
-    const endpoint = `${getEndpoint()}api/${instance}/values.json`;
+    const endpoint = `${getEndpoint()}api/instance/${instance}/values.json`;
     const headers = {
-      authentication: `Bearer ${token}`,
+      authorization: `Bearer ${token}`,
     };
 
     let req;
@@ -58,7 +55,6 @@ async function getConfig(instance, token) {
       }
     } else {
       const res = await req.json();
-
       fs.writeFile(
         getCachePath(),
         JSON.stringify({
@@ -70,7 +66,6 @@ async function getConfig(instance, token) {
         }),
         () => {}
       );
-
       resolve(res);
     }
   });
