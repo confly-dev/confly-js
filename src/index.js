@@ -1,7 +1,7 @@
 require("dotenv").config();
 const fs = require("fs");
 const chalk = require("chalk");
-const { getCachePath, getEndpoint } = require("./util");
+const { getCachePath, getEndpoint } = require("./utils");
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
