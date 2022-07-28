@@ -6,7 +6,7 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 import fetch from "node-fetch";
 import userSettings from "user-settings";
-import FormData from "form-data";
+import { FormData } from "formdata-node";
 import { getEndpoint } from "../utils.js";
 
 const settings = userSettings.file(".confly");
@@ -14,12 +14,9 @@ const settings = userSettings.file(".confly");
 (async () => {
   console.log(path.resolve());
 
-  const cwd = process.cwd();
-
   const endPoint = getEndpoint();
 
-  const configPath = path.join(cwd, "confly.config.json");
-  const gitignorePath = path.join(cwd, ".gitignore");
+  const configPath = path.join(process.cwd(), "confly.structure.json");
 
   const args = process.argv.slice(2, process.argv.length);
 
@@ -33,29 +30,27 @@ const settings = userSettings.file(".confly");
 
   if (args[0].toLowerCase() == "help") {
     console.log(chalk.green.bold("Confly Help"));
-    console.log(
-      chalk.yellow("confly init") +
-        chalk.redBright("- Create a new confly project or use an existing one")
-    );
-    console.log(
-      chalk.yellow("confly push ") +
-        chalk.redBright("- Push local structure to server.")
-    );
-    console.log(
-      chalk.yellow("confly pull ") +
-        chalk.redBright("- Update local structure from server.")
-    );
-    console.log(
-      chalk.yellow("confly login") +
-        chalk.redBright("- Login with username and password")
-    );
-    console.log(
-      chalk.yellow("confly logout") +
-        chalk.redBright("- Forget token created by login")
-    );
+    console.log(`
+confly <command>
+
+Usage:
+
+confly init     - create a new confly project or use an existing one
+confly push     - push local structure to server
+confly pull     - update local structure from server
+confly login    - login with username and password
+confly logout   - forget token created by login
+confly version  - show the version of confly
+`);
   } else if (args[0].toLowerCase() == "init") {
+    if (!settings.get("token")) {
+      console.log(
+        chalk.yellow("Not logged in. Please use 'npx confly login' to login.")
+      );
+      process.exit(0);
+    }
     if (fs.existsSync(configPath)) {
-      console.log("confly.structure.json already exists.");
+      console.log(chalk.yellow("confly.structure.json already exists."));
       process.exit(0);
     }
 
@@ -71,63 +66,64 @@ const settings = userSettings.file(".confly");
       .then((answers) => {
         if (answers.createNew == "Yes") {
           inquirer
-          .prompt([
-            {         
-            name: "projectName",
-            message: "Please enter a project name: ",
-          }
-          ])
-          .then((answers) => {
-            const form = new FormData();
-            form.append("identifier", answers.projectName);
-            const res = await fetch(
-              `${getEndpoint()}api/projects`, 
-              { 
-                method: "POST", 
+            .prompt([
+              {
+                name: "projectName",
+                message: "Please enter a project name: ",
+              },
+            ])
+            .then(async (answers) => {
+              const form = new FormData();
+              form.set("name", answers.projectName);
+              let res = await fetch(`${getEndpoint()}api/projects`, {
+                method: "POST",
                 headers: {
-                  authorization: `Bearer ${token}`,
+                  authorization: `Bearer ${settings.get("token")}`,
                 },
                 body: form,
+              }).then((res) => res.json());
+              if (res.status == 200) {
+                console.log(res);
+                settings.set("project", res.project.id);
+                console.log(chalk.green.bold("Created new confly project"));
+                createConfig(configPath);
+              } else {
+                console.log(
+                  chalk.redBright(
+                    `${res.status} Failed to create new confly project: ${res.message}`
+                  )
+                );
+                process.exit(0);
+              }
             });
-            if (res.status == 200) {
-              settings.set("project", login_res.token);
-              createConfig();
-              console.log(chalk.green.bold("Created new confly project"));
-            }
-            else {
-              console.log(chalk.redBright(`${res.status} Failed to create new confly project: ${res.message}`));
-              process.exit(0);
-            }
-          });
-      }
-      else {
-        inquirer
-          .prompt([
-            {         
-            name: "projectId",
-            message: "Please enter an existing project id: ",
-          }
-          ])
-          .then((answers) => {
-            const req = await fetch(
-              `${getEndpoint()}api/projects?projectId=${answers.projectId}`, 
-              { 
-                method: "GET", 
-                headers: {
-                  authorization: `Bearer ${token}`,
-                },
+        } else {
+          inquirer
+            .prompt([
+              {
+                name: "projectId",
+                message: "Please enter an existing project id: ",
+              },
+            ])
+            .then(async (answers) => {
+              const res = await fetch(
+                `${getEndpoint()}api/projects?projectId=${answers.projectId}`,
+                {
+                  method: "GET",
+                  headers: {
+                    authorization: `Bearer ${settings.get("token")}`,
+                  },
+                }
+              ).then((res) => res.json());
+              if (res.status == 200) {
+                settings.set("project", answers.projectId);
+                console.log(
+                  chalk.green.bold("Confirmed existing confly project")
+                );
+                createConfig(configPath);
+              } else
+                console.log(chalk.redBright(`${res.status}: ${res.message}`));
             });
-          });
-          if (req.status == 200) {
-            settings.set("project", answers.projectId);
-            createConfig();
-            console.log(chalk.green.bold("Confirmed existing confly project"));
-          }
-          else {
-            console.log(chalk.redBright(`${req.status}: ${req.message}`));
-            process.exit(0);
-          }
-      }
+        }
       });
   } else if (args[0].toLowerCase() == "push") {
     if (!settings.get("token")) {
@@ -141,22 +137,55 @@ const settings = userSettings.file(".confly");
 
     const { structure } = JSON.parse(fs.readFileSync(configPath));
 
-    const res = await fetch(`${endPoint}api/${settings.get("project")}/structure`, {
-      method: "POST",
-      body: JSON.stringify(structure),
-      headers: {
-        "Content-Type": "application/json",
-        authorization: `Bearer ${settings.get("token")}`,
-      },
-    });
+    const res = await fetch(
+      `${endPoint}api/projects/${settings.get("project")}/structure`,
+      {
+        method: "POST",
+        body: JSON.stringify(structure),
+        headers: {
+          "Content-Type": "application/json",
+          authorization: `Bearer ${settings.get("token")}`,
+        },
+      }
+    ).then((res) => res.json());
+
+    if (res.status == 200)
+      console.log(chalk.green.bold("Structure pushed to server"));
+    else console.log(chalk.redBright(`${res.status}: ${res.message}`));
+  } else if (args[0].toLowerCase() == "pull") {
+    if (!settings.get("token")) {
+      console.log(
+        chalk.yellow("Not logged in. Please use 'npx confly login' to login.")
+      );
+      process.exit(0);
+    }
+    if (!fs.existsSync(configPath) || !settings.get("project")) {
+      console.log(chalk.red("Project not found. Use 'npx confly init' first."));
+      process.exit(0);
+    }
+
+    const res = await fetch(
+      `${endPoint}api/projects/${settings.get("project")}/structure`,
+      {
+        method: "GET",
+        headers: {
+          authorization: `Bearer ${settings.get("token")}`,
+        },
+      }
+    ).then((res) => res.json());
 
     if (res.status == 200) {
-      console.log(chalk.green("Config structure updated successfully."));
-    } else {
-      console.log(chalk.redBright(`${res.status}: ${res.message}`));
-
-    }
+      fs.writeFileSync(
+        configPath,
+        JSON.stringify({ structure: res.structure })
+      );
+      console.log(chalk.green.bold("Structure pulled from server"));
+    } else console.log(chalk.redBright(`${res.status}: ${res.message}`));
   } else if (args[0].toLowerCase() == "login") {
+    if (settings.get("token")) {
+      console.log(chalk.red("Already logged in"));
+      process.exit(0);
+    }
     inquirer
       .prompt([
         {
@@ -171,29 +200,26 @@ const settings = userSettings.file(".confly");
       ])
       .then(async (answers) => {
         const form = new FormData();
-        form.append("identifier", answers.identifier);
-        form.append("password", answers.password);
-        const login_res = await fetch(`${endPoint}api/auth`, {
+        form.set("identifier", answers.identifier);
+        form.set("password", answers.password);
+
+        const res = await fetch(`${endPoint}api/auth`, {
           method: "POST",
           body: form,
-        });
+        }).then((res) => res.json());
 
-        if (login_res.status == 200) {
-          settings.set("token", login_res.token);
-          console.log(chalk.green("You are logged in."));
-        } else {
-          console.log(login_res);
-        }
+        if (res.status == 200) {
+          settings.set("token", res.token.token);
+          console.log(chalk.green.bold("Logged in successfully"));
+        } else console.log(chalk.redBright(`${res.status}: ${res.message}`));
       });
   } else if (args[0].toLowerCase() == "logout") {
     settings.unset("token");
     console.log(chalk.green("You are logged out."));
   } else if (args[0].toLowerCase() == "version") {
+    var json = JSON.parse(fs.readFileSync("./package.json").toString());
     console.log(
-      "Confly v" +
-        chalk.green(require("../../package.json").version) +
-        " using " +
-        getEndpoint()
+      "Confly v" + chalk.green(json.version) + " using " + getEndpoint()
     );
   } else {
     console.log(
@@ -202,7 +228,9 @@ const settings = userSettings.file(".confly");
   }
 })();
 
-function createConfig() {
+function createConfig(configPath) {
+  const gitignorePath = path.join(process.cwd(), ".gitignore");
+
   //TODO: fix structure
   fs.writeFileSync(
     configPath,
