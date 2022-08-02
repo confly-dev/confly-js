@@ -1,2 +1,3 @@
-# node-sdk
+# confly-js
+
 NPM package for confly
