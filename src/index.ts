@@ -1,5 +1,5 @@
 import "dotenv/config";
-import fs from "fs";
+import * as fs from "fs";
 import chalk from "chalk";
 import { getCachePath, getEndpoint } from "./utils.js";
 import fetch, { Headers } from "node-fetch";
@@ -36,10 +36,12 @@ export async function getConfig(
           authorization: `Bearer ${token}`,
         },
       }
-    ).then((res) => res.json())) as Response;
+    ).then((response) => response.json())) as Response;
+
+    console.log(res);
 
     if (res.status !== 200) {
-      if (res.status == 404) {
+      if (res.status === 404) {
         console.error(chalk.red("Invalid confly token"));
         reject("Invalid confly token");
       } else {
@@ -70,7 +72,9 @@ export async function getConfig(
             timestamp: Date.now(),
           },
         }),
-        () => {}
+        (err) => {
+          if (err) console.error(err);
+        }
       );
       resolve(res.values);
     }

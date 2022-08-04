@@ -1,8 +1,11 @@
 {
-  "extends": "./tsconfig-base.json",
   "compilerOptions": {
-    "module": "esnext",
-    "outDir": "dist/mjs",
-    "target": "esnext"
-  }
+    "module": "ES6",
+    "target": "ES5",
+    "lib": ["ES2020", "DOM"],
+    "declaration": true,
+    "outDir": "./lib",
+    "moduleResolution": "node"
+  },
+  "include": ["src/**/*"]
 }
