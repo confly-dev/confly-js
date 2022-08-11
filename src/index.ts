@@ -29,7 +29,7 @@ export async function getConfig(
     }
 
     const res: Response = (await fetch(
-      `${getEndpoint()}api/instance/${instance}/values.json`,
+      `${getEndpoint()}api/v1/instance/${instance}/values.json`,
       {
         method: "GET",
         headers: {
