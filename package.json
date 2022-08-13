@@ -1,6 +1,6 @@
 {
   "name": "@confly-dev/confly-js",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "js package for confly.dev",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
