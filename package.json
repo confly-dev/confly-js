@@ -1,24 +1,26 @@
 {
-  "name": "@confly-dev/confly-js",
+  "name": "confly-js",
   "version": "1.0.1",
   "description": "js package for confly.dev",
-  "main": "lib/index.js",
   "types": "lib/index.d.ts",
-  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": " tsc -p tsconfig.json"
+    "compile": "npm run lint && rm -rf dist/lib && tsc && tsc --build tsconfig.es5.json",
+    "lint": "eslint . --ext .ts",
+    "readme": "node bin/generateReadme.js",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "test:coveralls": "jest --coverage --coverageReporters=text-lcov | coveralls"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/confly-dev/confly-js.git"
   },
-  "author": "Robin Dorst",
+  "author": "The Confly Team",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/confly-dev/confly-js/issues"
   },
-  "homepage": "https://confly.dev/",
+  "homepage": "https://docs.confly.dev/confly-js",
   "dependencies": {
     "chalk": "^5.0.1",
     "dotenv": "^16.0.1",
@@ -26,12 +28,16 @@
     "node-fetch": "^3.2.10"
   },
   "devDependencies": {
-    "@tsconfig/node16": "^1.0.3",
-    "@types/node": "^18.6.3",
-    "@types/node-fetch": "^2.6.2",
-    "prettier": "^2.7.1",
-    "tslint": "^6.1.3",
-    "tslint-config-prettier": "^1.18.0",
-    "typescript": "^4.7.4"
+    "@types/jest": "^26.0.19",
+    "@typescript-eslint/eslint-plugin": "^4.11.1",
+    "@typescript-eslint/parser": "^4.11.1",
+    "coveralls": "^3.1.0",
+    "ejs": "^3.1.5",
+    "eslint": "^7.17.0",
+    "jest": "^26.6.3",
+    "js-htmlencode": "^0.3.0",
+    "jsdoc-parse-plus": "^1.3.0",
+    "nyc": "^15.1.0",
+    "typescript": "^4.1.3"
   }
 }
