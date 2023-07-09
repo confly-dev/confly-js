@@ -21,5 +21,5 @@ export async function getConfig(
       throw new Error("Invalid confly token");
   }
 
-  return res.data.values;
+  return res.data;
 }
